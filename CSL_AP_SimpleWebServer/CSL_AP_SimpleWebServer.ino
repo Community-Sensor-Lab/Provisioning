@@ -70,15 +70,12 @@ void setup() {
   // print the network name (SSID);
   Serial.print("Creating access point named: ");
   Serial.println(ssid);
-
   // Create open network. Change this line if you want to create an WEP network:
-  status = WiFi.beginAP(ssid,pass);
+  status = WiFi.beginAP(ssid);
   if (status != WL_AP_LISTENING) {
     Serial.println("Creating access point failed");
-    // don't continue
     while (true);
   }
-
   // wait 10 seconds for connection:
   delay(10000);
   server.begin();
@@ -86,14 +83,15 @@ void setup() {
 }
 
 void loop() {
+
+  String ssid, passcode, gsid;
+  
   // compare the previous status to the current status
   if (status != WiFi.status()) {
     // it has changed update the variable
     status = WiFi.status();
     if (status == WL_AP_CONNECTED) {
       byte remoteMac[6];
-
-      // a device has connected to the AP
       Serial.print("Device connected to AP, MAC address: ");
       WiFi.APClientMacAddress(remoteMac);
       printMacAddress(remoteMac);
@@ -104,7 +102,6 @@ void loop() {
   }
 
   WiFiClient client = server.available();   // listen for incoming clients
-  
   IPAddress ip = WiFi.localIP();
 
   if (client) {                   // if you get a client,
@@ -123,29 +120,28 @@ void loop() {
             client.println("HTTP/1.1 200 OK");
             client.println("Content-type:text/html");
             client.println();
-            // the content of the HTTP response follows the header:
-//            client.print("Click <a href=\"/H\">here</a> turn the LED on<br>");
-//            client.print("Click <a href=\"/L\">here</a> turn the LED off<br>");
-            client.print(index_html);
-            // The HTTP response ends with another blank line:
+            client.print(index_html); // The HTTP response ends with another blank line:
             client.println();
-            // break out of the while loop:
-            break;
+            break;   // break out of the while loop:
           }
-          else {      // if you got a newline, then clear currentLine:
+          else {      // if you got a newline, then parse currentLine and clear
+            if (currentLine.startsWith("GET /get?")) {
+              int ssidIndx = currentLine.indexOf("SSID=");
+              int passcodeIndx = currentLine.indexOf("passcode=");
+              int gsidIndx =  currentLine.indexOf("GSID=");
+              int httpIndx = currentLine.indexOf(" HTTP");
+              ssid = currentLine.substring(ssidIndx + 5, passcodeIndx - 1);
+              passcode = currentLine.substring(passcodeIndx + 9, gsidIndx - 1);
+              gsid = currentLine.substring(gsidIndx + 5, httpIndx);
+              Serial.print("ssid: "); Serial.println(ssid);
+              Serial.print("passcode: "); Serial.println(passcode);
+              Serial.print("gsid: "); Serial.println(gsid);
+            }
             currentLine = "";
           }
         }
         else if (c != '\r') {    // if you got anything else but a carriage return character,
           currentLine += c;      // add it to the end of the currentLine
-        }
-
-        // Check to see if the client request was "GET /H" or "GET /L":
-        if (currentLine.endsWith("GET /H")) {
-          digitalWrite(led, HIGH);               // GET /H turns the LED on
-        }
-        if (currentLine.endsWith("GET /L")) {
-          digitalWrite(led, LOW);                // GET /L turns the LED off
         }
       }
     }
