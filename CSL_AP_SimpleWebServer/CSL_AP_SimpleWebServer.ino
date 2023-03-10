@@ -14,6 +14,8 @@
   created 25 Nov 2012
   by Tom Igoe
   adapted to WiFi AP by Adafruit
+
+  edit by sm
 */
 
 #include <SPI.h>
