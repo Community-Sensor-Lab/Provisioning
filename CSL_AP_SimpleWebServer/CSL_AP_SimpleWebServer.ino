@@ -15,7 +15,7 @@
   by Tom Igoe
   adapted to WiFi AP by Adafruit
 
-  edit by sm
+  edit by sm nihal
 */
 
 #include <SPI.h>
