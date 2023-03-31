@@ -26,6 +26,7 @@ int keyIndex = 0;                // your network key Index number (needed only f
 
 int led =  LED_BUILTIN;
 int status = WL_IDLE_STATUS;
+String ssidg, passcodeg, gsidg;
 WiFiServer server(80);
 
 const char index_html[] PROGMEM = R"rawliteral(
@@ -59,8 +60,23 @@ void setup() {
 }
 
 void loop() {
-  Serial.println("made it to loop");
+
+  while ( status != WL_CONNECTED) {
+    Serial.print("Attempting to connect to WEP network, SSID: ");
+    Serial.println(ssid);
+    status = WiFi.begin(ssidg, passcodeg);
+
+    // wait 10 seconds for connection:
+    delay(10000);
+  }
+
+  // once you are connected :
+  if(status == WL_CONNECTED) {
+  Serial.print("You're connected to the network");
+  printWiFiStatus();
+
   while (1);
+  }
 }
 
 void printWiFiStatus() {
@@ -123,11 +139,12 @@ void getInput() {
   server.begin();
   printWiFiStatus();
 
-  String ssid, passcode, gsid;
+  //String ssid, passcode, gsid;
 
   // compare the previous status to the current status
-  do {
-    if (status != WiFi.status()) {
+  while (true) {
+
+    if (status != WiFi.status()) { // someone joined ap or left
       // it has changed update the variable
       status = WiFi.status();
       if (status == WL_AP_CONNECTED) {
@@ -148,8 +165,8 @@ void getInput() {
       Serial.println("new client"); // print a message out the serial port
       String currentLine = "";      // make a String to hold incoming data from the client
       while (client.connected()) {  // loop while the client's connected
-        if (client.available())
-          client.stop(); {  // if there's bytes to read from the client,
+
+        if (client.available()) {  // if there's bytes to read from the client,
           char c = client.read();   // read a byte, then
           Serial.write(c);          // print it out the serial monitor
           if (c == '\n') {           // if the byte is a newline character
@@ -171,12 +188,13 @@ void getInput() {
                 int passcodeIndx = currentLine.indexOf("passcode=");
                 int gsidIndx =  currentLine.indexOf("GSID=");
                 int httpIndx = currentLine.indexOf(" HTTP");
-                ssid = currentLine.substring(ssidIndx + 5, passcodeIndx - 1);
-                passcode = currentLine.substring(passcodeIndx + 9, gsidIndx - 1);
-                gsid = currentLine.substring(gsidIndx + 5, httpIndx);
-                Serial.print("ssid: "); Serial.println(ssid);
-                Serial.print("passcode: "); Serial.println(passcode);
-                Serial.print("gsid: "); Serial.println(gsid);
+                ssidg = currentLine.substring(ssidIndx + 5, passcodeIndx - 1);
+                passcodeg = currentLine.substring(passcodeIndx + 9, gsidIndx - 1);
+                gsidg = currentLine.substring(gsidIndx + 5, httpIndx);
+                Serial.print("ssid: "); Serial.println(ssidg);
+                Serial.print("passcode: "); Serial.println(passcodeg);
+                Serial.print("gsid: "); Serial.println(gsidg);
+                return;
               }
               currentLine = "";
             }
@@ -190,5 +208,5 @@ void getInput() {
       client.stop();
       Serial.println("client disconnected");
     }
-  } while ();
+  } // end of infinite loop
 }
