@@ -194,7 +194,7 @@ void getInput() {
                 Serial.print("ssid: "); Serial.println(ssidg);
                 Serial.print("passcode: "); Serial.println(passcodeg);
                 Serial.print("gsid: "); Serial.println(gsidg);
-                return;
+                return;  //************ before return close csl-test connection --- want to connect to actual wifi = NGENSMOTO.
               }
               currentLine = "";
             }
