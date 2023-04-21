@@ -20,7 +20,7 @@
 #include <WiFi101.h>
 #include "arduino_secrets.h"
 ///////please enter your sensitive data in the Secret tab/arduino_secrets.h
-char ssid[] = SECRET_SSID;  // your network SSID (name)
+//char ssid[] = SECRET_SSID;  // your network SSID (name)
 //char pass[] = SECRET_PASS;  // your network password (use for WPA, or use as key for WEP)
 int keyIndex = 0;           // your network key Index number (needed only for WEP)
 
@@ -56,8 +56,8 @@ void setup() {
   delay(3000);
   Serial.println(__FILE__);
 
-  //String ssidl,passcodel,gsidl;
-  
+  String ssidl, passcodel, gsidl;
+
   getInput();
 }
 
@@ -68,9 +68,13 @@ void loop() {
     Serial.print("Attempting to connect to WEP network, SSID: ");
     Serial.println(ssidg);
     status = WiFi.begin(ssidg, passcodeg);
-
-    // wait 10 seconds for connection:
-    delay(5000);
+    Serial.print("WiFi status: "); Serial.println(status);
+    if(status == WL_DISCONNECTED) {
+      Serial.println("Connect failed. Going back to provisioning");
+      Serial.println("Please close browser on 192.168.1.1");
+      WiFi.end();
+      getInput();
+    }
   }
 
   // once you are connected :
@@ -79,6 +83,7 @@ void loop() {
     printWiFiStatus();
     while (1);
   }
+  delay(1000);
 }
 /////// MAIN LOOP END
 
@@ -124,16 +129,21 @@ void getInput() {
   // you can override it with the following:
   // WiFi.config(IPAddress(10, 0, 0, 1));
 
-  // print the network name (SSID);
-  Serial.print("Creating access point named: ");
-  Serial.println(ssid);
-
   // Create open network. Change this line if you want to create an WEP network:
-  status = WiFi.beginAP(ssid);
+
+  byte localMac[6];
+  Serial.print("Device MAC address: ");
+  WiFi.macAddress(localMac);
+  printMacAddress(localMac);
+  char myHexString[3];
+  sprintf(myHexString, "%02X%02X", localMac[1], localMac[0]);
+  String ssid = "CSL" + String((char*)myHexString);
+  Serial.print("Creating access point: ");
+  Serial.println(ssid);
+  status = WiFi.beginAP(ssid.c_str());
   if (status != WL_AP_LISTENING) {
     Serial.println("Creating access point failed");
-    while (true)
-      ;
+    while (true);
   }
 
   // wait 10 seconds for connection:
