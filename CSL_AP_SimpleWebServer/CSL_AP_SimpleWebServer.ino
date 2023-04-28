@@ -29,6 +29,7 @@ int keyIndex = 0;                // your network key Index number (needed only f
 int led =  LED_BUILTIN;
 int status = WL_IDLE_STATUS;
 WiFiServer server(80);
+
 const char index_html[] PROGMEM = R"rawliteral(
 <!DOCTYPE HTML><html><head>
   <title>Community Sensor Lab provisioning page</title>
@@ -80,13 +81,13 @@ void setup() {
   }
   // wait 10 seconds for connection:
   delay(10000);
-  server.begin();
   printWiFiStatus();
 }
 
 void loop() {
 
   String ssid, passcode, gsid;
+  WiFiClient client;
   
   // compare the previous status to the current status
   if (status != WiFi.status()) {
@@ -97,13 +98,15 @@ void loop() {
       Serial.print("Device connected to AP, MAC address: ");
       WiFi.APClientMacAddress(remoteMac);
       printMacAddress(remoteMac);
+      server.begin();
     } else {
       // a device has disconnected from the AP, and we are back in listening mode
       Serial.println("Device disconnected from AP");
+      client.stop();
     }
   }
 
-  WiFiClient client = server.available();   // listen for incoming clients
+  client = server.available();   // listen for incoming clients
   IPAddress ip = WiFi.localIP();
 
   if (client) {                   // if you get a client,
