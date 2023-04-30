@@ -1,36 +1,29 @@
 /*
-  WiFi Web Server LED Blink
+  WiFi Web Server PROVISIONING EXAMPLE
 
-  A simple web server that lets you blink an LED via the web.
-  This sketch will create a new access point (with no password).
+  A simple web server that lets you capture ssid, passcode and GoogleSheets ID via the web.
+
+  This sketch will create a new access point with unique ssid and with no password.
   It will then launch a new server and print out the IP address
   to the Serial monitor. From there, you can open that address in a web browser
-  to turn on and off the LED on pin 13.
+  to enter the data fields
+  
+  TESTED ON:
+  MOBILE: SAFARI, DUCKDUCKGO, CHROME.
+  DESKTOP: CHROME, FIREFOX, SAFARI
+  NOTE: THIS DOESN'T WORK WITH FIREFOX ON MOBILE. 
 
-  If the IP address of your shield is yourAddress:
-    http://yourAddress/H turns the LED on
-    http://yourAddress/L turns it off
-
-  created 25 Nov 2012
-  by Tom Igoe
-  adapted to WiFi AP by Adafruit
-
-  edit by sm nihal
+  smnihal, rtoledocrow CSL-NGENS-ASRC-CUNY 4.30.2023
 */
 
 #include <SPI.h>
 #include <WiFi101.h>
-#include "arduino_secrets.h"
-///////please enter your sensitive data in the Secret tab/arduino_secrets.h
-char ssid[] = SECRET_SSID;        // your network SSID (name)
-char pass[] = SECRET_PASS;    // your network password (use for WPA, or use as key for WEP)
-int keyIndex = 0;                // your network key Index number (needed only for WEP)
 
-int led =  LED_BUILTIN;
 int status = WL_IDLE_STATUS;
 WiFiServer server(80);
 
-const char index_html[] PROGMEM = R"rawliteral(
+/// THIS IS THE WEB PAGE TO CAPTURE SSID, PASSCODE, GSID
+const char webpage_html[] PROGMEM = R"rawliteral(
 <!DOCTYPE HTML><html><head>
   <title>Community Sensor Lab provisioning page</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -49,36 +42,22 @@ const char index_html[] PROGMEM = R"rawliteral(
   </form>
 </body></html>)rawliteral";
 
-// testing git
-
 void setup() {
-  WiFi.setPins(8, 7, 4, 2); // configure wifi pins
-  delay(200);
+  WiFi.setPins(8, 7, 4, 2);  // configure wifi pins
   Serial.begin(9600);
   delay(3000);
   Serial.println(__FILE__);
 
-  Serial.println("Access Point Web Server");
-  pinMode(led, OUTPUT);      // set the LED pin mode
+  Serial.println("Provisioning with Access Point Web Server");
 
   if (WiFi.status() == WL_NO_SHIELD) {
     Serial.println("WiFi shield not present");
     while (true);
   }
 
-  // by default the local IP address of will be 192.168.1.1
-  // you can override it with the following:
-  // WiFi.config(IPAddress(10, 0, 0, 1));
+  // will make AP with string+MAC address
+  makeMACssidAP("csl");
 
-  // print the network name (SSID);
-  Serial.print("Creating access point named: ");
-  Serial.println(ssid);
-  // Create open network. Change this line if you want to create an WEP network:
-  status = WiFi.beginAP(ssid);
-  if (status != WL_AP_LISTENING) {
-    Serial.println("Creating access point failed");
-    while (true);
-  }
   // wait 10 seconds for connection:
   delay(10000);
   printWiFiStatus();
@@ -88,7 +67,7 @@ void loop() {
 
   String ssid, passcode, gsid;
   WiFiClient client;
-  
+
   // compare the previous status to the current status
   if (status != WiFi.status()) {
     // it has changed update the variable
@@ -106,17 +85,18 @@ void loop() {
     }
   }
 
-  client = server.available();   // listen for incoming clients
-  IPAddress ip = WiFi.localIP();
+  client = server.available();  // listen for incoming clients
+  //IPAddress ip = WiFi.localIP();
 
-  if (client) {                   // if you get a client,
-    Serial.println("new client"); // print a message out the serial port
-    String currentLine = "";      // make a String to hold incoming data from the client
-    while (client.connected()) {  // loop while the client's connected
-      if (client.available()) {   // if there's bytes to read from the client,
-        char c = client.read();   // read a byte, then
-        Serial.write(c);          // print it out the serial monitor
+  if (client) {                    // if you get a client,
+    Serial.println("new client");  // print a message out the serial port
+    String currentLine = "";       // make a String to hold incoming data from the client
+    while (client.connected()) {   // loop while the client's connected
+      if (client.available()) {    // if there's bytes to read from the client,
+        char c = client.read();    // read a byte, then
+        Serial.write(c);           // print it out the serial monitor
         if (c == '\n') {           // if the byte is a newline character
+
           // if the current line is blank, you got two newline characters in a row.
           // that's the end of the client HTTP request, so send a response:
           if (currentLine.length() == 0) {
@@ -125,35 +105,38 @@ void loop() {
             client.println("HTTP/1.1 200 OK");
             client.println("Content-type:text/html");
             client.println();
-            client.print(index_html); // The HTTP response ends with another blank line:
+            client.print(webpage_html);  // The HTTP response is the web pageends with another blank line:
             client.println();
-            break;   // break out of the while loop:
-          }
-          else {      // if you got a newline, then parse currentLine and clear
+            break;  // break out of the while loop:
+          } 
+          else {  
+            
+            // if you got a newline, then parse currentLine and clear
             if (currentLine.startsWith("GET /get?")) {
               int ssidIndx = currentLine.indexOf("SSID=");
               int passcodeIndx = currentLine.indexOf("passcode=");
-              int gsidIndx =  currentLine.indexOf("GSID=");
+              int gsidIndx = currentLine.indexOf("GSID=");
               int httpIndx = currentLine.indexOf(" HTTP");
               ssid = currentLine.substring(ssidIndx + 5, passcodeIndx - 1);
               passcode = currentLine.substring(passcodeIndx + 9, gsidIndx - 1);
               gsid = currentLine.substring(gsidIndx + 5, httpIndx);
-              Serial.print("ssid: "); Serial.println(ssid);
-              Serial.print("passcode: "); Serial.println(passcode);
-              Serial.print("gsid: "); Serial.println(gsid);
+              Serial.print("ssid: ");
+              Serial.println(ssid);
+              Serial.print("passcode: ");
+              Serial.println(passcode);
+              Serial.print("gsid: ");
+              Serial.println(gsid);
             }
             currentLine = "";
           }
-        }
-        else if (c != '\r') {    // if you got anything else but a carriage return character,
+        } else if (c != '\r') {  // if you got anything else but a carriage return character,
           currentLine += c;      // add it to the end of the currentLine
         }
-      }
-    }
-    // close the connection:
-    client.stop();
+      } // if client.available()
+    } // while client.connected()
+    client.stop();  // close the connection:
     Serial.println("client disconnected");
-  }
+  } // if client
 }
 
 void printWiFiStatus() {
@@ -174,7 +157,6 @@ void printWiFiStatus() {
   // print where to go in a browser:
   Serial.print("To see this page in action, open a browser to http://");
   Serial.println(ip);
-
 }
 
 void printMacAddress(byte mac[]) {
@@ -186,4 +168,31 @@ void printMacAddress(byte mac[]) {
       Serial.print(":");
   }
   Serial.println();
+}
+
+void makeMACssidAP(String startString) {
+  // by default the local IP address of will be 192.168.1.1
+  // you can override it with the following:
+  // WiFi.config(IPAddress(10, 0, 0, 1));
+
+  byte localMac[6];
+
+  Serial.print("Device MAC address: ");
+  WiFi.macAddress(localMac);
+  printMacAddress(localMac);
+
+  char myHexString[3];
+  sprintf(myHexString, "%02X%02X", localMac[1], localMac[0]);
+  String ssid = startString + String((char *)myHexString);
+
+  Serial.print("Creating access point: ");
+  Serial.println(ssid);
+
+  status = WiFi.beginAP(ssid.c_str());
+
+  if (status != WL_AP_LISTENING) {
+    Serial.println("Creating access point failed");
+    while (true)
+      ;
+  }
 }
