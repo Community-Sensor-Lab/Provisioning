@@ -23,13 +23,13 @@
 #include <SPI.h>
 #include <WiFi101.h>
 #include "arduino_secrets.h"
-///////please enter your sensitive data in the Secret tab/arduino_secrets.h
-//char ssid[] = SECRET_SSID;  // your network SSID (name)
-//char pass[] = SECRET_PASS;  // your network password (use for WPA, or use as key for WEP)
-int keyIndex = 0;           // your network key Index number (needed only for WEP)
+
+
+int keyIndex = 0;  // your network key Index number (needed only for WEP)
 
 int led = LED_BUILTIN;
 int status = WL_IDLE_STATUS;
+
 String ssidg, passcodeg, gsidg;
 
 WiFiServer server(80);
@@ -72,11 +72,16 @@ void loop() {
     Serial.print("Attempting to connect to WEP network, SSID: ");
     Serial.println(ssidg);
     status = WiFi.begin(ssidg, passcodeg);
-    Serial.print("WiFi status: "); Serial.println(status);
-    if(status == WL_DISCONNECTED) {
+    delay(10000);
+
+    Serial.print("WiFi status: ");
+    Serial.println(status);
+
+    if (status == WL_DISCONNECTED) {
       Serial.println("Connect failed. Going back to provisioning");
       Serial.println("Please close browser on 192.168.1.1");
       WiFi.end();
+
       getInput();
     }
   }
@@ -85,7 +90,8 @@ void loop() {
   if (status == WL_CONNECTED) {
     Serial.print("You're connected to the network ");
     printWiFiStatus();
-    while (1);
+    while (1)
+      ;
   }
   delay(1000);
 }
@@ -119,43 +125,54 @@ void printMacAddress(byte mac[]) {
   Serial.println();
 }
 
-void getInput() {
-
-  Serial.println("Access Point Web Server");
-  pinMode(led, OUTPUT);  // set the LED pin mode
-
-  if (WiFi.status() == WL_NO_SHIELD) {
-    Serial.println("WiFi shield not present");
-    while (true);
-  }
-
+void makeMACssidAP(String startString) {
   // by default the local IP address of will be 192.168.1.1
   // you can override it with the following:
   // WiFi.config(IPAddress(10, 0, 0, 1));
 
-  // Create open network. Change this line if you want to create an WEP network:
-
   byte localMac[6];
+
   Serial.print("Device MAC address: ");
   WiFi.macAddress(localMac);
   printMacAddress(localMac);
+
   char myHexString[3];
   sprintf(myHexString, "%02X%02X", localMac[1], localMac[0]);
-  String ssid = "CSL" + String((char*)myHexString);
+  String ssid = startString + String((char *)myHexString);
+
   Serial.print("Creating access point: ");
   Serial.println(ssid);
+
   status = WiFi.beginAP(ssid.c_str());
+
   if (status != WL_AP_LISTENING) {
     Serial.println("Creating access point failed");
-    while (true);
+    while (true)
+      ;
+  }
+}
+
+void getInput() {
+
+  WiFiClient client;
+
+  Serial.println("Access Point Web Server");
+  pinMode(led, OUTPUT);  // set the LED pin mode
+
+  status = WiFi.status();
+  if (status == WL_NO_SHIELD) {
+    Serial.println("WiFi shield not present");
+    while (true)
+      ;
   }
 
-  // wait 10 seconds for connection:
-  delay(10000);
-  server.begin();
-  printWiFiStatus();
+  // will make AP with string+MAC address
+  makeMACssidAP("csl");
 
-  //String ssid, passcode, gsid;
+  // wait 10 seconds for connection:
+  delay(1000);
+  // server.begin();
+  printWiFiStatus();
 
   // compare the previous status to the current status
   while (true) {
@@ -169,19 +186,22 @@ void getInput() {
         WiFi.APClientMacAddress(remoteMac);
         printMacAddress(remoteMac);
 
+        Serial.println("Starting server");
+        server.begin();
+
         // print where to go in a browser:
         IPAddress ip = WiFi.localIP();
-        Serial.print("To provide provisioning info, open a browser with http://");
+        Serial.print("To provide provisioning info, open a browser at http://");
         Serial.println(ip);
 
       } else {
         // a device has disconnected from the AP, and we are back in listening mode
         Serial.println("Device disconnected from AP");
+        client.stop();
       }
     }
 
-    WiFiClient client = server.available();  // listen for incoming clients
-    IPAddress ip = WiFi.localIP();
+    client = server.available();  // listen for incoming clients
 
     if (client) {                    // if you get a client,
       Serial.println("new client");  // print a message out the serial port
@@ -191,7 +211,8 @@ void getInput() {
         if (client.available()) {  // if there's bytes to read from the client,
           char c = client.read();  // read a byte, then
           Serial.write(c);         // print it out the serial monitor
-          if (c == '\n') {         // if the byte is a newline character
+
+          if (c == '\n') {  // if the byte is a newline character
             // if the current line is blank, you got two newline characters in a row.
             // that's the end of the client HTTP request, so send a response:
             if (currentLine.length() == 0) {
@@ -203,9 +224,9 @@ void getInput() {
               client.print(index_html);  // The HTTP response ends with another blank line:
               client.println();
               break;  // break out of the while loop:
-            } else {  // if you got a newline, then parse currentLine and clear
+            } else {  // if you got a newline, then check and parse currentLine and clear
 
-              if (currentLine.startsWith("GET /get?")) { // if current line has the info parse and end...
+              if (currentLine.startsWith("GET /get?")) {  // if current line has the info parse and end...
                 int ssidIndx = currentLine.indexOf("SSID=");
                 int passcodeIndx = currentLine.indexOf("passcode=");
                 int gsidIndx = currentLine.indexOf("GSID=");
@@ -224,18 +245,23 @@ void getInput() {
                 client.stop();
                 Serial.println("client disconnected\n");
                 WiFi.end();
-                delay(1000);
+                WiFi.init();
+                delay(10000);
                 status = WiFi.status();
+                Serial.println("Have ssid+passcode+gsid");
+                
                 return;  // info will be in global vars ssidg, passcodeg, gsidg. TODO Move to local vars
-
               }
-              currentLine = "";
+              currentLine = "";  // if not 'GET' just start new line
             }
           } else if (c != '\r') {  // if you got anything else but a carriage return character,
             currentLine += c;      // add it to the end of the currentLine
           }
-        } // if(client.available())
-      } // while(client.connected())
-    } // if(client)
-  }  // while(true)
+        }  // if(client.available())
+      }    // while(client.connected())
+      client.stop();
+      Serial.println("Client disconnected");
+
+    }  // if(client)
+  }    // while(true)
 }
