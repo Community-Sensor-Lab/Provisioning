@@ -9,6 +9,10 @@
 *   The info is gathered with function AP_getInfo();
 *
 *   SM Nihal, R ToledoCrow, NGENS ASRC CUNY, JUNE 2023
+*  TESTED ON:
+*  MOBILE: SAFARI, DUCKDUCKGO, CHROME.
+*  DESKTOP: CHROME, FIREFOX, SAFARI
+*  NOTE: THIS DOESN'T WORK WITH FIREFOX ON MOBILE. 
 *  
 */
 
@@ -21,7 +25,8 @@ WiFiServer server(80);
 
 /* this is the simple webpage with three fields to enter and
 send info */
-const char provisioningWebpage_html[] PROGMEM = R"rawliteral(
+
+const char webpage_html[] PROGMEM = R"rawliteral(
 <!DOCTYPE HTML><html><head>
   <title>Community Sensor Lab provisioning page</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -85,4 +90,3 @@ void loop() {
   delay(1000);
 }
 /////// MAIN LOOP END
-
